@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude & MCP — How It Works</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --accent: #7c6af7;
+      --accent2: #56cfb2;
+      --text: #e8eaf0;
+      --muted: #8890a8;
+      --border: #2e3248;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 60px;
+    }
+
+    .nav-brand {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .nav-tab {
+      padding: 0.4rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-tab:hover { color: var(--text); background: var(--surface); }
+    .nav-tab.active { color: var(--text); background: var(--accent); }
+
+    .nav-progress {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ── Pages ── */
+    .page { display: none; flex: 1; padding: 3rem 2rem; max-width: 900px; margin: 0 auto; width: 100%; }
+    .page.active { display: block; }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 2rem 0 3rem;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 1rem;
+      border-radius: 20px;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 { font-size: 2.8rem; font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+    h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.75rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      line-height: 1.7;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+    .highlight-card {
+      background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(86,207,178,0.1));
+      border-color: rgba(124,106,247,0.4);
+    }
+
+    /* ── Diagram ── */
+    .diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+    }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .flow-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      text-align: center;
+      min-width: 110px;
+    }
+
+    .flow-box.accent { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .flow-box.accent2 { border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
+    .flow-arrow { color: var(--muted); font-size: 1.2rem; }
+
+    /* ── Code block ── */
+    .code-block {
+      background: #0d0f18;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin: 1rem 0;
+    }
+
+    .code-block .kw { color: #c792ea; }
+    .code-block .str { color: #c3e88d; }
+    .code-block .key { color: #82aaff; }
+    .code-block .cmt { color: #546e7a; }
+    .code-block .num { color: #f78c6c; }
+
+    /* ── Steps ── */
+    .steps { counter-reset: step; margin: 1.5rem 0; }
+
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+
+    .step-content h3 { margin-bottom: 0.3rem; }
+    .step-content p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+    /* ── Tag / pill ── */
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin: 0.15rem;
+    }
+    .pill-purple { background: rgba(124,106,247,0.2); color: #a99df9; }
+    .pill-teal   { background: rgba(86,207,178,0.2);  color: #7de0cc; }
+    .pill-orange { background: rgba(247,140,108,0.2); color: #f9b49d; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.65rem 1rem; background: var(--surface2); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Section ── */
+    section { margin-bottom: 2.5rem; }
+
+    /* ── Page footer nav ── */
+    .page-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #6a58e0; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--surface); }
+    .btn:disabled { opacity: 0.3; cursor: default; }
+
+    .page-label { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(124,106,247,0.08);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .callout strong { color: var(--text); }
+
+    /* ── Summary boxes ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .summary-box {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .summary-box .big { font-size: 2rem; font-weight: 800; color: var(--accent); }
+    .summary-box .label { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      nav { padding: 0 1rem; }
+      .page { padding: 2rem 1rem; }
+      .flow { flex-direction: column; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <span class="nav-brand">Claude & MCP</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="goTo(1)">1 · Claude</button>
+    <button class="nav-tab" onclick="goTo(2)">2 · MCP</button>
+    <button class="nav-tab" onclick="goTo(3)">3 · Together</button>
+  </div>
+  <span class="nav-progress" id="progress">Page 1 of 3</span>
+</nav>
+
+<!-- ════════════════════════════════════
+     PAGE 1 — What is Claude?
+════════════════════════════════════ -->
+<div class="page active" id="page-1">
+
+  <div class="hero">
+    <div class="hero-badge">Page 1 of 3</div>
+    <h1>Meet <span>Claude</span></h1>
+    <p>Claude is Anthropic's AI assistant — a large language model designed to be helpful, harmless, and honest. Think of it as a very capable reasoning engine that you can talk to.</p>
+  </div>
+
+  <section>
+    <h2>What is a Large Language Model?</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.7;">Claude is built on a <strong>Large Language Model (LLM)</strong> — a neural network trained on vast amounts of text. It learned patterns, facts, reasoning, and language by processing billions of documents.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <h3>Trained on Text</h3>
+        <p>Claude learned from books, code, websites, and more — giving it broad general knowledge across many domains.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💬</div>
+        <h3>Conversational</h3>
+        <p>Claude communicates naturally in a back-and-forth dialogue, maintaining context throughout the conversation.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Safety-Focused</h3>
+        <p>Anthropic uses Constitutional AI and RLHF to make Claude helpful while avoiding harmful outputs.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How Claude Processes a Request</h2>
+    <div class="diagram">
+      <div class="flow">
+        <div class="flow-box">Your prompt<br/><small style="color:var(--muted)">text input</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box accent">Tokenization<br/><small>words → tokens</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box">Transformer<br/><small style="color:var(--muted)">attention layers</small></div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box accent2">Response<br/><small>tokens → text</small></div>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:0.875rem;line-height:1.6;">The model reads your entire conversation as a <strong>context window</strong> — everything you've said is visible to it when forming a reply. Claude 3.5 Sonnet supports up to 200,000 tokens (~150,000 words) of context.</p>
+  </section>
+
+  <section>
+    <h2>The Claude Model Family</h2>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Speed</th><th>Intelligence</th><th>Best for</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Claude Haiku</strong></td>
+            <td><span class="pill pill-teal">Fastest</span></td>
+            <td>Good</td>
+            <td>High-volume, simple tasks</td>
+          </tr>
+          <tr>
+            <td><strong>Claude Sonnet</strong></td>
+            <td><span class="pill pill-orange">Balanced</span></td>
+            <td>Great</td>
+            <td>Everyday coding & analysis</td>
+          </tr>
+          <tr>
+            <td><strong>Claude Opus</strong></td>
+            <td><span class="pill pill-purple">Thorough</span></td>
+            <td>Best</td>
+            <td>Complex reasoning & research</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Claude's Core Capabilities</h2>
+    <div class="card highlight-card">
+      <p style="margin-bottom:0.75rem;">Claude can help with a wide range of tasks out of the box:</p>
+      <div>
+        <span class="pill pill-purple">Code generation</span>
+        <span class="pill pill-purple">Debugging</span>
+        <span class="pill pill-purple">Text summarization</span>
+        <span class="pill pill-teal">Data analysis</span>
+        <span class="pill pill-teal">Writing & editing</span>
+        <span class="pill pill-teal">Q&A</span>
+        <span class="pill pill-orange">Translation</span>
+        <span class="pill pill-orange">Math & reasoning</span>
+        <span class="pill pill-orange">Tool use</span>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Key limitation:</strong> Claude's knowledge has a training cutoff. It doesn't know about recent events, can't browse the web, and can't access your files or systems — <em>unless</em> you give it tools. That's where MCP comes in (next page!).
+    </div>
+  </section>
+
+  <div class="page-nav">
+    <button class="btn btn-outline" disabled>← Previous</button>
+    <span class="page-label">Next: What is MCP?</span>
+    <button class="btn btn-primary" onclick="goTo(2)">Next →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE 2 — What is MCP?
+════════════════════════════════════ -->
+<div class="page" id="page-2">
+
+  <div class="hero">
+    <div class="hero-badge">Page 2 of 3</div>
+    <h1>The <span>Model Context<br/>Protocol</span></h1>
+    <p>MCP is an open standard that lets Claude (and other AI models) connect to external tools, data sources, and services — safely and reliably.</p>
+  </div>
+
+  <section>
+    <h2>The Problem MCP Solves</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.7;">Claude alone is powerful but isolated. It can reason, write, and analyze — but it can't reach outside itself. Before MCP, every integration was custom, fragile, and hard to reuse.</p>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>No Standard Plug</h3>
+        <p>Every team built their own bespoke bridge between Claude and their tools. Nothing was portable.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔁</div>
+        <h3>Duplicate Work</h3>
+        <p>The same Jira connector, filesystem reader, or database tool was re-invented over and over.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚠️</div>
+        <h3>Security Gaps</h3>
+        <p>No agreed model for permissions or sandboxing meant security was often an afterthought.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>MCP's answer:</strong> A universal, open protocol — like USB-C for AI tools. Build a server once, and any MCP-compatible client (Claude, Claude Code, other LLMs) can use it.
+    </div>
+  </section>
+
+  <section>
+    <h2>MCP Architecture</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.6;">MCP has three main components that work together:</p>
+
+    <div class="diagram">
+      <div class="flow">
+        <div class="flow-box accent" style="padding:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">🤖</div>
+          <strong>MCP Client</strong><br/>
+          <small style="color:var(--muted)">Claude / Claude Code<br/>The AI host</small>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
+          <span style="font-size:0.7rem;color:var(--muted)">JSON-RPC</span>
+          <span class="flow-arrow">⟷</span>
+        </div>
+        <div class="flow-box" style="padding:1rem;border-color:#56cfb2;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">🖥️</div>
+          <strong style="color:var(--accent2)">MCP Server</strong><br/>
+          <small style="color:var(--muted)">Your connector<br/>Exposes tools</small>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
+          <span style="font-size:0.7rem;color:var(--muted)">native API</span>
+          <span class="flow-arrow">⟷</span>
+        </div>
+        <div class="flow-box" style="padding:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">📦</div>
+          <strong>Data Source</strong><br/>
+          <small style="color:var(--muted)">Jira, GitHub,<br/>DB, files…</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Client discovers tools</h3>
+          <p>When Claude connects to an MCP server, it asks "what can you do?" The server replies with a list of tools, their names, descriptions, and input schemas.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Claude decides when to use a tool</h3>
+          <p>During a conversation, Claude autonomously decides when to call a tool. It constructs valid JSON arguments matching the tool's schema.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Server executes and returns results</h3>
+          <p>The MCP server receives the call, runs the actual logic (e.g., query Jira), and returns the result as structured data back to Claude.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Claude incorporates the result</h3>
+          <p>Claude reads the tool result and weaves it into its response — presenting data, summarizing, or continuing a multi-step task.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What an MCP Server Exposes</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🛠️</div>
+        <h3>Tools</h3>
+        <p>Functions Claude can call: <code style="color:var(--accent2)">search_issues()</code>, <code style="color:var(--accent2)">read_file()</code>, <code style="color:var(--accent2)">run_query()</code>. Each has a name, description, and JSON schema.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📄</div>
+        <h3>Resources</h3>
+        <p>Static or dynamic data Claude can read: documentation pages, file contents, configuration — like a read-only filesystem.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💡</div>
+        <h3>Prompts</h3>
+        <p>Pre-built prompt templates the server offers — reusable instructions for common workflows users can trigger.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A Real MCP Tool Definition</h2>
+    <p style="color:var(--muted);margin-bottom:0.75rem;font-size:0.9rem;">This is what a Jira search tool looks like when an MCP server registers it:</p>
+    <div class="code-block">
+{
+  <span class="key">"name"</span>: <span class="str">"jira_search"</span>,
+  <span class="key">"description"</span>: <span class="str">"Search Jira issues using JQL query language"</span>,
+  <span class="key">"inputSchema"</span>: {
+    <span class="key">"type"</span>: <span class="str">"object"</span>,
+    <span class="key">"properties"</span>: {
+      <span class="key">"jql"</span>: {
+        <span class="key">"type"</span>: <span class="str">"string"</span>,
+        <span class="key">"description"</span>: <span class="str">"JQL query, e.g. project = MYPROJ AND status = Open"</span>
+      },
+      <span class="key">"limit"</span>: {
+        <span class="key">"type"</span>: <span class="str">"number"</span>,
+        <span class="key">"description"</span>: <span class="str">"Max results to return (1-50)"</span>
+      }
+    },
+    <span class="key">"required"</span>: [<span class="str">"jql"</span>]
+  }
+}
+    </div>
+  </section>
+
+  <div class="page-nav">
+    <button class="btn btn-outline" onclick="goTo(1)">← Previous</button>
+    <span class="page-label">Next: Claude + MCP Together</span>
+    <button class="btn btn-primary" onclick="goTo(3)">Next →</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE 3 — Claude + MCP Together
+════════════════════════════════════ -->
+<div class="page" id="page-3">
+
+  <div class="hero">
+    <div class="hero-badge">Page 3 of 3</div>
+    <h1>Claude + MCP<br/><span>Working Together</span></h1>
+    <p>When Claude is paired with MCP servers, it becomes an autonomous agent that can plan, act, and get things done across your real systems.</p>
+  </div>
+
+  <section>
+    <h2>The Full Picture</h2>
+    <div class="diagram">
+      <div class="flow">
+        <div class="flow-box" style="padding:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">🧑</div>
+          <strong>You</strong><br/>
+          <small style="color:var(--muted)">Natural language<br/>request</small>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box accent" style="padding:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">🤖</div>
+          <strong>Claude</strong><br/>
+          <small style="color:var(--muted)">Reasons, plans,<br/>picks tools</small>
+        </div>
+        <span class="flow-arrow">⟷</span>
+        <div class="flow-box" style="padding:1rem;border-color:var(--accent2);">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">🖥️</div>
+          <strong style="color:var(--accent2)">MCP Servers</strong><br/>
+          <small style="color:var(--muted)">Jira · GitHub<br/>DB · Files · APIs</small>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-box" style="padding:1rem;">
+          <div style="font-size:1.5rem;margin-bottom:0.25rem;">✅</div>
+          <strong>Result</strong><br/>
+          <small style="color:var(--muted)">Action taken<br/>or answer given</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A Real Example: This Conversation</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.6;">When you asked <em>"Show all tickets in SCIOPERATIONS assigned to me"</em>, here is exactly what happened:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>You typed a natural language request</h3>
+          <p>No JQL, no API keys, no code. Just plain English describing what you wanted.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Claude planned the approach</h3>
+          <p>Claude recognized this needed the Jira MCP server. It identified that it needed to look up your user ID first, then query for issues.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Claude called MCP tools</h3>
+          <p>It called <code style="color:var(--accent2)">jira_search</code> with JQL: <code style="color:var(--accent2)">project = SCIOPERATIONS AND assignee = I537100 AND updated &gt;= -5d</code></p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Claude formatted the results</h3>
+          <p>It received raw JSON from Jira, then synthesized it into a clean, readable table — no extra effort from you.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Claude Code + MCP</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.6;"><strong>Claude Code</strong> is the CLI version of Claude. It runs in your terminal and ships with built-in MCP support. You configure servers in a JSON file:</p>
+
+    <div class="code-block">
+<span class="cmt">// ~/.claude/settings.json</span>
+{
+  <span class="key">"mcpServers"</span>: {
+    <span class="key">"jira"</span>: {
+      <span class="key">"command"</span>: <span class="str">"npx"</span>,
+      <span class="key">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"@sap/mcp-jira"</span>],
+      <span class="key">"env"</span>: {
+        <span class="key">"JIRA_URL"</span>: <span class="str">"https://jira.tools.sap"</span>,
+        <span class="key">"JIRA_TOKEN"</span>: <span class="str">"your-token-here"</span>
+      }
+    },
+    <span class="key">"filesystem"</span>: {
+      <span class="key">"command"</span>: <span class="str">"npx"</span>,
+      <span class="key">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"@modelcontextprotocol/server-filesystem"</span>,
+               <span class="str">"/Users/you/projects"</span>]
+    }
+  }
+}
+    </div>
+
+    <div class="callout">
+      <strong>That's it.</strong> Claude Code starts the servers as child processes, discovers their tools automatically, and makes them available in every conversation — no further configuration needed.
+    </div>
+  </section>
+
+  <section>
+    <h2>Building Your Own MCP Server</h2>
+    <p style="color:var(--muted);margin-bottom:1rem;line-height:1.6;">You can write an MCP server in Python or TypeScript in under 50 lines:</p>
+    <div class="code-block">
+<span class="kw">from</span> mcp.server.fastmcp <span class="kw">import</span> FastMCP
+
+app = FastMCP(<span class="str">"my-tools"</span>)
+
+<span class="kw">@app</span>.tool()
+<span class="kw">def</span> <span class="key">get_weather</span>(city: str) -> str:
+    <span class="str">"""Get current weather for a city."""</span>
+    <span class="cmt"># call your weather API here</span>
+    <span class="kw">return</span> f<span class="str">"Weather in {city}: 22°C, sunny"</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    app.run()
+    </div>
+    <p style="color:var(--muted);font-size:0.875rem;margin-top:0.5rem;">Claude will automatically discover <code style="color:var(--accent2)">get_weather</code>, read the docstring as the description, and call it with the right argument when you ask about weather.</p>
+  </section>
+
+  <section>
+    <h2>Key Takeaways</h2>
+    <div class="summary-grid">
+      <div class="summary-box">
+        <div class="big">LLM</div>
+        <div class="label">Claude is a powerful language model that reasons and generates text</div>
+      </div>
+      <div class="summary-box">
+        <div class="big">MCP</div>
+        <div class="label">An open protocol that gives Claude structured, safe access to tools</div>
+      </div>
+      <div class="summary-box">
+        <div class="big">Agent</div>
+        <div class="label">Together they form an agent that can plan and act autonomously</div>
+      </div>
+    </div>
+
+    <div class="card-grid" style="margin-top:1rem;">
+      <div class="card">
+        <div class="card-icon">📚</div>
+        <h3>Learn More</h3>
+        <p>Official MCP docs: <strong>modelcontextprotocol.io</strong><br/>Claude API: <strong>docs.anthropic.com</strong><br/>Claude Code: <strong>claude.ai/code</strong></p>
+      </div>
+      <div class="card highlight-card">
+        <div class="card-icon">🚀</div>
+        <h3>You're Already Using It</h3>
+        <p>This very conversation runs Claude Code with a Jira MCP server — every Jira lookup you asked for was Claude using MCP in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="page-nav">
+    <button class="btn btn-outline" onclick="goTo(2)">← Previous</button>
+    <span class="page-label">Tutorial complete!</span>
+    <button class="btn btn-primary" onclick="goTo(1)">Start over</button>
+  </div>
+</div>
+
+<script>
+  function goTo(n) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + n).classList.add('active');
+    document.querySelectorAll('.nav-tab')[n - 1].classList.add('active');
+    document.getElementById('progress').textContent = 'Page ' + n + ' of 3';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+
+</body>
+</html>
